@@ -1,0 +1,8 @@
+bokeh
+numpy
+pandas
+streamlit
+fugashi==1.1.1
+ipadic==1.0.0
+sentence-transformers==2.1.0
+transformers==4.12.3
