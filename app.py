@@ -80,11 +80,16 @@ def main():
     target_users = col3.multiselect("ターゲット", create_candidates(cp, "ターゲット"))
     if len(target_users) == 0:
         target_users = None
+
+    filter_msg_placeholder = st.empty()
     st.markdown("---")
     # ==============================================================================
 
     # 絞り込み＆算出した類似度を表示
     # ==============================================================================
+    if len(keyword) == 0:
+        st.stop()
+
     n_displays = st.slider("キャッチコピー表示数", min_value=1, value=10)
 
     # 各キャッチコピーに対する類似度を計算
@@ -95,6 +100,10 @@ def main():
         target_atmospheres=target_atmospheres,
         target_users=target_users,
     )
+    if calc_df is None:
+        filter_msg_placeholder.error("該当するキャッチコピーが存在しません。絞り込み条件を変えてください。")
+        st.stop()
+
     desc_calc_df = calc_df.sort_values("類似度", ascending=False)[:n_displays]
     asc_calc_df = calc_df.sort_values("類似度", ascending=True)[:n_displays]
 
@@ -128,7 +137,7 @@ def main():
 
     # 選択されたキャッチコピーの平均算出
     # ==============================================================================
-    candidates = desc_calc_df["キャッチコピー"].tolist() + asc_calc_df["キャッチコピー"].tolist()
+    candidates = pd.concat([desc_calc_df["キャッチコピー"], asc_calc_df["キャッチコピー"]]).unique()
     selected_phrases = st.multiselect(
         "上記の中で「このニュアンス/雰囲気使いたいな」と思ったキャッチコピーがあれば選択してください（2〜3個程度）", candidates
     )
