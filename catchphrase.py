@@ -28,10 +28,7 @@ class Catchphrase:
     ベクトル化されたキャッチコピー群を用いて、類似/非類似キャッチコピーの検索等を行うためのクラス。
     """
 
-    phrases_csv_path: pathlib.Path = pathlib.Path("./input/catchphrases.csv")
-    embedded_phrases_csv_path: pathlib.Path = pathlib.Path(
-        "./input/catchphrases_embedded.csv"
-    )
+    cache_csv_dirpath: pathlib.Path = pathlib.Path("./input")
     cols: List[str] = dataclasses.field(
         default_factory=lambda: [
             "キャッチコピー",
@@ -41,6 +38,8 @@ class Catchphrase:
             "埋め込み済キャッチコピー",
         ]
     )
+    phrases_csv_path: pathlib.Path = dataclasses.field(init=False)
+    embedded_phrases_csv_path: pathlib.Path = dataclasses.field(init=False)
     origin_df: pd.DataFrame = dataclasses.field(init=False)
     df: pd.DataFrame = dataclasses.field(init=False)
     model: SentenceTransformer = dataclasses.field(init=False)
@@ -60,6 +59,12 @@ class Catchphrase:
         -> `self.origin_df`, `self.df` ともに空のdataframe
         """
         self.model = self._create_pretrained_bert()
+
+        self.cache_csv_dirpath.mkdir(exist_ok=True)
+        self.phrases_csv_path = self.cache_csv_dirpath / "catchphrases.csv"
+        self.embedded_phrases_csv_path = (
+            self.cache_csv_dirpath / "catchphrases_embedded.csv"
+        )
 
         if self.embedded_phrases_csv_path.exists():
             self._read_embedded_phrases_csv()
