@@ -276,7 +276,6 @@ class Catchphrase:
             df = df[df[self.cols[2]].isin(target_atmospheres)]
         if target_users:
             df = df[df[self.cols[3]].isin(target_users)]
-        assert len(df) > 0
         return df
 
     def _calc_cosine_similarity_matrix(
@@ -314,7 +313,7 @@ class Catchphrase:
         target_categories: List[str] = None,
         target_atmospheres: List[str] = None,
         target_users: List[str] = None,
-    ) -> pd.DataFrame:
+    ) -> Union[pd.DataFrame, None]:
         """`phrase` と各キャッチコピー（絞り込みアリ）とのコサイン類似度を測定し、
         `self.df`に「類似度」列として追加したものを返す。
 
@@ -339,11 +338,14 @@ class Catchphrase:
 
         Returns
         -------
-        pd.DataFrame
+        Union[pd.DataFrame, None]
+            絞り込みの結果、該当するキャッチコピーがない場合は None を返す
         """
         df = self._filter_phrases(
             max_phrase_length, target_categories, target_atmospheres, target_users
         )
+        if len(df) == 0:
+            return None
 
         if embedded_phrase is None:
             embedded_phrase = self.embed([phrase])
@@ -369,7 +371,7 @@ class Catchphrase:
         target_categories: List[str] = None,
         target_atmospheres: List[str] = None,
         target_users: List[str] = None,
-    ) -> Tuple[np.ndarray, List[str]]:
+    ) -> Union[Tuple[np.ndarray, List[str]], Tuple[None, None]]:
         """`phrase` と各キャッチコピー（絞り込みアリ）とのコサイン類似度を測定し、
         各テキストのMDS結果(ndarray)とテキストそのもの(List[str])をラベルとして返す。
 
@@ -391,11 +393,14 @@ class Catchphrase:
 
         Returns
         -------
-        Tuple[np.ndarray, List[str]]
+        Union[Tuple[np.ndarray, List[str]], Tuple[None, None]]
+            絞り込みの結果、該当するキャッチコピーがない場合は (None, None) を返す
         """
         df = self._filter_phrases(
             max_phrase_length, target_categories, target_atmospheres, target_users
         )
+        if len(df) == 0:
+            return (None, None)
 
         embedded_phrase = self.embed([phrase])
         reference_embedded_phrases = df[self.cols[-1]]
