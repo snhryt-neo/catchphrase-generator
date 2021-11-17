@@ -2,6 +2,7 @@
 import datetime as dt
 from typing import List
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 from bokeh.plotting import figure
@@ -13,6 +14,8 @@ from catchphrase import Catchphrase
 @st.cache(allow_output_mutation=True)
 def init() -> Catchphrase:
     cp = Catchphrase()
+    if len(cp.df) == 0:
+        cp.crawl_embed(is_init=True)
     return cp
 
 
@@ -82,11 +85,11 @@ def main():
 
     # 絞り込み＆算出した類似度を表示
     # ==============================================================================
-    n_displays = st.slider("表示数", min_value=1, value=10)
+    n_displays = st.slider("キャッチコピー表示数", min_value=1, value=10)
 
     # 各キャッチコピーに対する類似度を計算
     calc_df = cp.calc_similarity_to_phrases(
-        keyword,
+        phrase=keyword,
         max_phrase_length=max_phrase_length,
         target_categories=target_categories,
         target_atmospheres=target_atmospheres,
@@ -96,51 +99,93 @@ def main():
     asc_calc_df = calc_df.sort_values("類似度", ascending=True)[:n_displays]
 
     # ダウンロードリンク用の情報
-    desc_calc_csv = convert_df(desc_calc_df)
-    desc_calc_filename = f"類似度top{n_displays}_{dt.date.today()}.csv"
-    asc_calc_csv = convert_df(asc_calc_df)
-    asc_calc_filename = f"類似度bottom{n_displays}_{dt.date.today()}.csv"
+    # desc_calc_csv = convert_df(desc_calc_df)
+    # desc_calc_filename = f"類似度top{n_displays}_{dt.date.today()}.csv"
+    # asc_calc_csv = convert_df(asc_calc_df)
+    # asc_calc_filename = f"類似度bottom{n_displays}_{dt.date.today()}.csv"
 
     similarity_container = st.container()
     col1, col2 = similarity_container.columns(2)
     col1.subheader("類似度が高い順")
     col1.table(desc_calc_df[["キャッチコピー", "類似度"]])
-    col1.download_button(
-        label="download",
-        data=desc_calc_csv,
-        file_name=desc_calc_filename,
-        mime="text/csv",
-    )
+    # col1.download_button(
+    #     label="download",
+    #     data=desc_calc_csv,
+    #     file_name=desc_calc_filename,
+    #     mime="text/csv",
+    # )
     col2.subheader("類似度が低い順")
     col2.table(asc_calc_df[["キャッチコピー", "類似度"]])
-    col2.download_button(
-        label="download",
-        data=asc_calc_csv,
-        file_name=asc_calc_filename,
-        mime="text/csv",
-    )
+    # col2.download_button(
+    #     label="download",
+    #     data=asc_calc_csv,
+    #     file_name=asc_calc_filename,
+    #     mime="text/csv",
+    # )
+
+    # st.markdown("---")
     # ==============================================================================
 
+    # 選択されたキャッチコピーの平均算出
+    # ==============================================================================
+    candidates = desc_calc_df["キャッチコピー"].tolist() + asc_calc_df["キャッチコピー"].tolist()
+    selected_phrases = st.multiselect(
+        "上記の中で「このニュアンス/雰囲気使いたいな」と思ったキャッチコピーがあれば選択してください（2〜3個程度）", candidates
+    )
+    if len(selected_phrases) == 0:
+        st.stop()
+
+    embedded_selected_phrases = calc_df[calc_df["キャッチコピー"].isin(selected_phrases)][
+        "埋め込み済キャッチコピー"
+    ]
+    vectors = np.array([vec for vec in embedded_selected_phrases])
+    similar_phrases = cp.calc_similarity_to_phrases(
+        phrase="",
+        embedded_phrase=vectors.mean(axis=0).reshape(1, len(vectors[0])),
+        max_phrase_length=max_phrase_length,
+        target_categories=target_categories,
+        target_atmospheres=target_atmospheres,
+        target_users=target_users,
+    ).sort_values("類似度", ascending=False)["キャッチコピー"]
+
+    st.subheader("ニュアンス/雰囲気の類似したキャッチコピー")
+    n_mean_displays = st.slider("キャッチコピー表示数", min_value=1, max_value=20, value=5)
+    counter = 0
+    for phrase in similar_phrases:
+        if phrase in selected_phrases:
+            continue
+        st.markdown(f"`{phrase}`")
+        counter += 1
+        if counter == n_mean_displays:
+            break
+
+    st.info("※ いまは平均から新規キャッチコピーの生成ではなく、類似した既存キャッチコピーの検索しか行えていない")
+    # ==============================================================================
+
+    # TODO: 実装する
     # MDSによるキャッチコピーの二次元分布図
     # ==============================================================================
-    is_clicked = st.button("Draw scatter")
-    if is_clicked:
-        # 処理に10分ぐらい時間かかるorz
-        positions, labels = calc_mds(
-            cp,
-            keyword,
-            max_phrase_length,
-            target_categories,
-            target_atmospheres,
-            target_users,
-        )
-        source = ColumnDataSource(
-            data=dict(x=positions[:, 0], y=positions[:, 1], desc=labels)
-        )
-        hover = HoverTool(tooltips=[("desc", "@desc")])
-        p = figure(title="catchcopy distribution by MDS", tools=[hover])
-        p.circle(source=source, fill_alpha=0.5)
-        st.bokeh_chart(p, use_container_width=True)
+    # is_clicked = st.button("Draw scatter")
+    # if is_clicked:
+    #     # 処理に5分ぐらい時間かかるorz
+    #     with st.spinner("Calculating MDS..."):
+    #         positions, labels = calc_mds(
+    #             cp,
+    #             keyword,
+    #             max_phrase_length,
+    #             target_categories,
+    #             target_atmospheres,
+    #             target_users,
+    #         )
+    #     st.success("Done!")
+
+    #     source = ColumnDataSource(
+    #         data=dict(x=positions[:, 0], y=positions[:, 1], desc=labels)
+    #     )
+    #     hover = HoverTool(tooltips=[("desc", "@desc")])
+    #     p = figure(title="catchcopy distribution by MDS", tools=[hover])
+    #     p.circle(source=source, fill_alpha=0.5)
+    #     st.bokeh_chart(p, use_container_width=True)
     # ==============================================================================
 
 
