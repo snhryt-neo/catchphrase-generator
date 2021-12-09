@@ -7,5 +7,6 @@ fugashi==1.1.1
 ipadic==1.0.0
 pymagnitude
 sentence-transformers==2.1.0
-sudachipy
+SudachiDict-core
+SudachiPy
 transformers==4.12.3
