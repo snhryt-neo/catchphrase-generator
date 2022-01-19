@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
+import datetime as dt
 from typing import List
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-from catchphrase import Catchphrase
-from word_replacer import WordReplacer
+from utils.catchphrase import Catchphrase
 
 
 @st.experimental_singleton
@@ -15,11 +14,6 @@ def store_embedded_catchphrases() -> Catchphrase:
     if len(cp.df) == 0:
         cp.crawl_embed(is_init=True)
     return cp
-
-
-@st.experimental_singleton
-def init_word_replacer() -> WordReplacer:
-    return WordReplacer()
 
 
 def create_candidates(cp: Catchphrase, col: str) -> List[str]:
@@ -133,94 +127,3 @@ def search_existing_catchphrases_app(placeholder) -> None:
 
         st.info("※ いまは平均から新規キャッチコピーの生成ではなく、類似した既存キャッチコピーの検索しか行えていない")
         # ==============================================================================
-
-
-def word_replace_app(placeholder) -> None:
-    PART_OF_SPEECH_TARGETS = {"動詞", "名詞", "代名詞", "形容詞", "形容動詞", "副詞"}
-    container = placeholder.container()
-
-    with container:
-        st.title("キャッチコピーの類語置換")
-
-        st.subheader("任意のキャッチコピーを入力してください")
-        input_phrase = st.text_input("（句読点を含むものでも可）")
-        if len(input_phrase) == 0:
-            st.stop()
-
-        word_replacer = init_word_replacer()
-
-        # 特定の品詞の単語のみをmultiselectの候補として表示
-        surfaces = word_replacer.wakati(input_phrase)
-        part_of_speechs = [p[0] for p in word_replacer.wakati(input_phrase, mode=4)]
-        surface_choices = [
-            surface
-            for surface, part_of_speech in zip(surfaces, part_of_speechs)
-            if part_of_speech in PART_OF_SPEECH_TARGETS
-        ]
-
-        # 以降では、ここで選ばれた単語の類語を出していく
-        target_surfaces = st.multiselect(
-            "置換対象とする単語を選択ください（複数選択可）", set(surface_choices)
-        )
-        st.markdown("---")
-        if len(target_surfaces) == 0:
-            st.stop()
-
-        top_N = st.slider("類似語の最大表示数", 3, 30, value=10)
-
-        # 選択された単語ごとの類語を候補として提示し、そのうち気に入ったものをユーザーが選択する
-        surface_selected_words_dict = {}
-        for i, surface in enumerate(target_surfaces):
-            expander = st.expander(f'単語{i + 1}: "{surface}"', expanded=i == 0)
-            with expander:
-                normalization = st.checkbox(
-                    "置換前の単語を正規化する（例: 附属 → 付属、SUMMER → サマー、シュミレーション → シミュレーション）",
-                    key=f"{i}_checkbox",
-                )
-                if normalization:
-                    normalized_surface = word_replacer.normalize(surface)
-                else:
-                    normalized_surface = surface
-                similar_words = word_replacer.search_similar_words(
-                    normalized_surface, top_N=top_N, normalization=normalization
-                )
-                selected_words = st.multiselect(
-                    "以下から採用する類語を選択してください", similar_words, key=f"{i}_multiselect"
-                )
-                surface_selected_words_dict[surface] = selected_words
-        if len(list(surface_selected_words_dict.values())[0]) == 0:
-            st.stop()
-
-        # 選択された単語 x その単語の類語のうち選択された数 個分のキャッチコピーを生成
-        replaced_input_phrases = set()
-        for surface, selected_words in surface_selected_words_dict.items():
-            for word in selected_words:
-                replaced_input_phrases.add(input_phrase.replace(surface, f" `{word}` "))
-                tmp = set()
-                for phrase in replaced_input_phrases:
-                    tmp.add(phrase.replace(surface, f" `{word}` "))
-                replaced_input_phrases = replaced_input_phrases | tmp
-        replaced_input_phrases = sorted(list(replaced_input_phrases))
-        st.markdown("---")
-
-        left, right = st.columns(2)
-        left.markdown("**置換後**")
-        for phrase in replaced_input_phrases:
-            left.markdown(phrase)
-        right.markdown("**オリジナル**")
-        right.markdown(input_phrase)
-
-
-def main():
-    st.set_page_config(page_title="キャッチコピー作成補助ツール")
-
-    mode = st.sidebar.radio("モード", ["類語置き換え", "既存キャッチコピー検索"])
-    placeholder = st.empty()
-    if mode == "類語置き換え":
-        word_replace_app(placeholder)
-    elif mode == "既存キャッチコピー検索":
-        search_existing_catchphrases_app(placeholder)
-
-
-if __name__ == "__main__":
-    main()

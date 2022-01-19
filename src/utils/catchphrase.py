@@ -28,7 +28,7 @@ class Catchphrase:
     ベクトル化されたキャッチコピー群を用いて、類似/非類似キャッチコピーの検索等を行うためのクラス。
     """
 
-    cache_csv_dirpath: pathlib.Path = pathlib.Path("./input")
+    cache_csv_dirpath: pathlib.Path = pathlib.Path("../input")
     cols: List[str] = dataclasses.field(
         default_factory=lambda: [
             "キャッチコピー",
