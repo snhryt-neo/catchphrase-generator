@@ -2,7 +2,7 @@ bokeh
 bs4
 numpy
 pandas
-streamlit
+streamlit>=1.1.0
 fugashi==1.1.1
 ipadic==1.0.0
 pymagnitude
@@ -10,3 +10,5 @@ sentence-transformers==2.1.0
 SudachiDict-core
 SudachiPy
 transformers==4.12.3
+pandas-gbq
+oauth2client

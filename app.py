@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import datetime as dt
 from typing import List
 
 import numpy as np
@@ -7,6 +8,8 @@ import streamlit as st
 
 from catchphrase import Catchphrase
 from word_replacer import WordReplacer
+from gbq import GBQ
+from schema import SCHEMA
 
 
 @st.experimental_singleton
@@ -20,6 +23,11 @@ def store_embedded_catchphrases() -> Catchphrase:
 @st.experimental_singleton
 def init_word_replacer() -> WordReplacer:
     return WordReplacer()
+
+
+@st.experimental_singleton
+def init_gbq() -> GBQ:
+    return GBQ(st.secrets["CREDENTIALS"]["project_id"], st.secrets["CREDENTIALS"])
 
 
 def create_candidates(cp: Catchphrase, col: str) -> List[str]:
@@ -137,8 +145,10 @@ def search_existing_catchphrases_app(placeholder) -> None:
 
 def word_replace_app(placeholder) -> None:
     PART_OF_SPEECH_TARGETS = {"動詞", "名詞", "代名詞", "形容詞", "形容動詞", "副詞"}
-    container = placeholder.container()
+    word_replacer = init_word_replacer()
+    gbq = init_gbq()
 
+    container = placeholder.container()
     with container:
         st.title("キャッチコピーの類語置換")
 
@@ -146,8 +156,6 @@ def word_replace_app(placeholder) -> None:
         input_phrase = st.text_input("（句読点を含むものでも可）")
         if len(input_phrase) == 0:
             st.stop()
-
-        word_replacer = init_word_replacer()
 
         # 特定の品詞の単語のみをmultiselectの候補として表示
         surfaces = word_replacer.wakati(input_phrase)
@@ -203,12 +211,44 @@ def word_replace_app(placeholder) -> None:
         replaced_input_phrases = sorted(list(replaced_input_phrases))
         st.markdown("---")
 
-        left, right = st.columns(2)
+        n_generated_phrases = len(replaced_input_phrases)
+        generated_phrases = [None] * n_generated_phrases
+        evaluations = [None] * n_generated_phrases
+
+        st.markdown("**オリジナル**")
+        st.markdown(input_phrase)
+        left, right = st.columns((3, 1))
         left.markdown("**置換後**")
-        for phrase in replaced_input_phrases:
+        right.markdown("気に入ったら✓")
+        for i, phrase in enumerate(replaced_input_phrases):
             left.markdown(phrase)
-        right.markdown("**オリジナル**")
-        right.markdown(input_phrase)
+            original_phrase = phrase.replace(" `", "").replace("` ", "")
+            generated_phrases[i] = original_phrase
+            evaluations[i] = right.checkbox(" ", key=original_phrase)
+        final_phrase = st.text_input("最終的に決定したキャッチコピー")
+
+        result_df = pd.DataFrame(
+            {
+                SCHEMA[0]["name"]: [dt.datetime.now()] * n_generated_phrases,
+                SCHEMA[1]["name"]: [input_phrase] * n_generated_phrases,
+                SCHEMA[2]["name"]: [final_phrase] * n_generated_phrases,
+                SCHEMA[3]["name"]: generated_phrases,
+                SCHEMA[4]["name"]: evaluations,
+            }
+        )
+        st.markdown("---")
+        submit_button = st.button("Submit")
+        status = st.empty()
+        if submit_button:
+            with st.spinner("Submitting feedback..."):
+                gbq.append(
+                    result_df,
+                    st.secrets["BQ"]["DATASET"],
+                    st.secrets["BQ"]["TABLE"],
+                    table_schema=SCHEMA,
+                )
+            status.success("Submit completed!")
+            st.balloons()
 
 
 def main():
