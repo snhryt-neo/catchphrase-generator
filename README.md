@@ -14,7 +14,7 @@
 # Usage
 
 ## Streamlit Cloud
-https://share.streamlit.io/snhryt-neo/catchphrase-generator/main/app.py
+https://share.streamlit.io/snhryt-neo/catchphrase-generator/main/src/app.py
 
 （mainブランチの中身が反映されている）
 
