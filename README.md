@@ -33,7 +33,7 @@ $ pip install -r requirements.txt
 $ cd src
 $ streamlit run app.py
 ```
-実行に成功すると、ブラウザで http://localhost:8501Local が自動的に開く。
+実行に成功すると、ブラウザで http://localhost:8501 が自動的に開く。
 （もしくは、ターミナルに表示されたLocal URL or Network URLをコピペしてアクセス）
 
 # Requirements
