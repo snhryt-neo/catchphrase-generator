@@ -3,4 +3,5 @@ __pycache__/
 input/
 output/
 playground.ipynb
-.streamlit/
+src/.streamlit/
+.idea/
