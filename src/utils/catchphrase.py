@@ -2,6 +2,7 @@
 import ast
 import dataclasses
 import pathlib
+import re
 import requests
 from typing import List, Tuple, Union
 
@@ -35,6 +36,7 @@ class Catchphrase:
             "カテゴリ",
             "印象",
             "ターゲット",
+            "背景",
             "埋め込み済キャッチコピー",
         ]
     )
@@ -198,6 +200,16 @@ class Catchphrase:
                 html_text.get_text() for html_text in span_t3_texts
             ]
 
+            # バックグラウンド
+            # <br>による区切りが有益そうなので、プレーンテキストではなく、あえてhtml形式のままとってくるが、不要なpタグや文末のコメントは削除
+            p_bg_texts = soup.find_all("p", class_="bg")
+            dict_for_df[self.cols[4]] += [
+                re.sub(r"<!-- no:[0-9]* --></p>", "", str(html_text)).replace(
+                    '<p class="bg">', ""
+                )
+                for html_text in p_bg_texts
+            ]
+
         self.origin_df = pd.DataFrame(dict_for_df)
         self.origin_df.to_csv(self.phrases_csv_path)
 
@@ -229,7 +241,7 @@ class Catchphrase:
         """
         if len(self.origin_df) == 0 or is_init:
             self.crawl()
-        self.df = self.origin_df.copy()
+        self.df = self.origin_df[self.cols[:4]].copy()
 
         embedded_phrases = self.embed(self.origin_df[self.cols[0]])
 
