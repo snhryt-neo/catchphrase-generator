@@ -9,6 +9,6 @@ pymagnitude
 sentence-transformers==2.1.0
 SudachiDict-core
 SudachiPy
-transformers==4.12.3
+transformers==4.36.0
 pandas-gbq
 oauth2client
